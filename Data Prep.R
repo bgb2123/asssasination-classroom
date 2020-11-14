@@ -2,7 +2,6 @@
 library(jsonlite)
 library(sp)
 library(rgdal)
-library(fields)
 library(lubridate)
 library(tidyverse)
 library(ggplot2)
