@@ -1,7 +1,8 @@
-#Install Libraries
+#Get Libraries
 library(jsonlite)
 library(sp)
 library(rgdal)
+library(fields)
 library(lubridate)
 library(tidyverse)
 library(ggplot2)
@@ -35,13 +36,13 @@ long <- as.numeric(long)
 #Modify time vector and adjust for timezone.
 time <- first[["features"]][["properties"]][["time"]]
 time_1 <- as.POSIXct(strptime(time, tz = "MST", format = "%Y-%m-%dT%H:%M:%OS"))
+time_long_1<- first[['features']]$properties$time_long
 
 #Create data frame of coordinates and time values.
-df_1 <- data.frame(lat, long, time_1)
+df_1 <- data.frame(lat, long, time_1, time_long_1)
 
 #Include time differences between the recordings and the ones above. 
-time.diff.1 <-lag(lead(df_1$time_1, 1) - df_1$time_1)
-df_1 <- data.frame(lat, long, time_1, time.diff.1)
+df_1$time.diff.1 <-lag(lead(df_1$time_1, 1) - df_1$time_1)
 
 #Add speed values. 
 df_1$speed <- first[["features"]][["properties"]][["speed"]]
@@ -65,10 +66,13 @@ long_2 <- as.numeric(long_2)
 #Modify time vector
 time_2 <- second[["features"]][["properties"]][["time"]]
 time_2 <- as.POSIXct(strptime(time_2, tz = "MST", format = "%Y-%m-%dT%H:%M:%OS"))
+time_long_2 <- second[['features']]$properties$time_long
 
-df_2 <- data.frame(lat_2, long_2, time_2)
-time.diff.2 <-lag(lead(df_2$time_2, 1) - df_2$time_2)
-df_2 <- data.frame(lat_2, long_2, time_2, time.diff.2)
+#Create data frame of coordinates and time values.
+df_2 <- data.frame(lat_2, long_2, time_2, time_long_2)
+
+#Include time differences between the recordings and the ones above. 
+df_2$time.diff.2 <-lag(lead(df_2$time_2, 1) - df_2$time_2)
 
 #Add speed values. 
 df_2$speed <- second[["features"]][["properties"]][["speed"]]
@@ -91,11 +95,13 @@ long_3 <- as.numeric(long_3)
 #Modify time vector
 time_3 <- third[["features"]][["properties"]][["time"]]
 time_3 <- as.POSIXct(strptime(time_3, tz = "MST", format = "%Y-%m-%dT%H:%M:%OS"))
+time_long_3<- third[['features']]$properties$time_long
 
-#Create data frame for 3rd week. 
-df_3 <- data.frame(lat_3, long_3, time_3)
-time.diff.3 <-lag(lead(df_3$time_3, 1) - df_3$time_3)
-df_3 <- data.frame(lat_3, long_3, time_3, time.diff.3)
+#Create data frame of coordinates and time values.
+df_3 <- data.frame(lat_3, long_3, time_3, time_long_3)
+
+#Include time differences between the recordings and the ones above. 
+df_3$time.diff.3 <-lag(lead(df_3$time_3, 1) - df_3$time_3)
 
 #Add speed values. 
 df_3$speed <- third[["features"]][["properties"]][["speed"]]
@@ -118,11 +124,13 @@ long_4 <- as.numeric(long_4)
 #Modify time vector
 time_4 <- fourth[["features"]][["properties"]][["time"]]
 time_4<- as.POSIXct(strptime(time_4, tz = "MST", format = "%Y-%m-%dT%H:%M:%OS"))
+time_long_4<- fourth[['features']]$properties$time_long
 
-#Create fourth week's data frame 
-df_4 <- data.frame(lat_4, long_4, time_4)
-time.diff.4 <-lag(lead(df_4$time_4, 1) - df_4$time_4)
-df_4 <- data.frame(lat_4, long_4, time_4, time.diff.4)
+#Create data frame of coordinates and time values.
+df_4 <- data.frame(lat_4, long_4, time_4, time_long_4)
+
+#Include time differences between the recordings and the ones above. 
+df_4$time.diff.4 <-lag(lead(df_4$time_4, 1) - df_4$time_4)
 
 #Add speed values. 
 df_4$speed <- fourth[["features"]][["properties"]][["speed"]]
@@ -145,11 +153,13 @@ long_5 <- as.numeric(long_5)
 #Modify time vector
 time_5 <- fifth[["features"]][["properties"]][["time"]]
 time_5<- as.POSIXct(strptime(time_5, tz = "MST", format = "%Y-%m-%dT%H:%M:%OS"))
+time_long_5<- fifth[['features']]$properties$time_long
 
-#Create fifth week's data frame.
-df_5 <- data.frame(lat_5, long_5, time_5)
-time.diff.5 <-lag(lead(df_5$time_5, 1) - df_5$time_5)
-df_5<- data.frame(lat_5, long_5, time_5, time.diff.5)
+#Create data frame of coordinates and time values.
+df_5 <- data.frame(lat_5, long_5, time_5, time_long_5)
+
+#Include time differences between the recordings and the ones above. 
+df_5$time.diff.5 <-lag(lead(df_5$time_5, 1) - df_5$time_5)
 
 #Add speed values. 
 df_5$speed <- fifth[["features"]][["properties"]][["speed"]]
@@ -172,11 +182,13 @@ long_6 <- as.numeric(long_6)
 #Modify time vector
 time_6 <- sixth[["features"]][["properties"]][["time"]]
 time_6<- as.POSIXct(strptime(time_6, tz = "MST", format = "%Y-%m-%dT%H:%M:%OS"))
+time_long_6<- sixth[['features']]$properties$time_long
 
-#Create sixth week's data frame.
-df_6 <- data.frame(lat_6, long_6, time_6)
-time.diff.6 <-lag(lead(df_6$time_6, 1) - df_6$time_6)
-df_6<- data.frame(lat_6, long_6, time_6, time.diff.6)
+#Create data frame of coordinates and time values.
+df_6 <- data.frame(lat_6, long_6, time_6, time_long_6)
+
+#Include time differences between the recordings and the ones above. 
+df_6$time.diff.6 <-lag(lead(df_6$time_6, 1) - df_6$time_6)
 
 #Add speed values. 
 df_6$speed <- sixth[["features"]][["properties"]][["speed"]]
@@ -199,11 +211,13 @@ long_7 <- as.numeric(long_7)
 #Modify time vector
 time_7 <- seven[["features"]][["properties"]][["time"]]
 time_7 <- as.POSIXct(strptime(time_7, tz = "MST", format = "%Y-%m-%dT%H:%M:%OS"))
+time_long_7<- seven[['features']]$properties$time_long
 
-#Create sixth week's data frame.
-df_7 <- data.frame(lat_7, long_7, time_7)
-time.diff.7 <-lag(lead(df_7$time_7, 1) - df_7$time_7)
-df_7<- data.frame(lat_7, long_7, time_7, time.diff.7)
+#Create data frame of coordinates and time values.
+df_7 <- data.frame(lat_7, long_7, time_7, time_long_7)
+
+#Include time differences between the recordings and the ones above. 
+df_7$time.diff.7 <-lag(lead(df_7$time_7, 1) - df_7$time_7)
 
 #Add speed values. 
 df_7$speed <- seven[["features"]][["properties"]][["speed"]]
@@ -226,11 +240,13 @@ long_8 <- as.numeric(long_8)
 #Modify time vector
 time_8 <- eight[["features"]][["properties"]][["time"]]
 time_8 <- as.POSIXct(strptime(time_8, tz = "MST", format = "%Y-%m-%dT%H:%M:%OS"))
+time_long_8<- eight[['features']]$properties$time_long
 
 #Create eighth week's data frame.
-df_8 <- data.frame(lat_8, long_8, time_8)
-time.diff.8 <-lag(lead(df_8$time_8, 1) - df_8$time_8)
-df_8<- data.frame(lat_8, long_8, time_8, time.diff.8)
+df_8 <- data.frame(lat_8, long_8, time_8, time_long_8)
+
+#Include time differences between the recordings and the ones above. 
+df_8$time.diff.8 <-lag(lead(df_8$time_8, 1) - df_8$time_8)
 
 #Add speed values. 
 df_8$speed <- eight[["features"]][["properties"]][["speed"]]
@@ -253,11 +269,13 @@ long_9 <- as.numeric(long_9)
 #Modify time vector
 time_9 <- ninth[["features"]][["properties"]][["time"]]
 time_9 <- as.POSIXct(strptime(time_9, tz = "MST", format = "%Y-%m-%dT%H:%M:%OS"))
+time_long_9<- ninth[['features']]$properties$time_long
 
 #Create ninth week's data frame.
-df_9 <- data.frame(lat_9, long_9, time_9)
-time.diff.9 <-lag(lead(df_9$time_9, 1) - df_9$time_9)
-df_9<- data.frame(lat_9, long_9, time_9, time.diff.9)
+df_9 <- data.frame(lat_9, long_9, time_9, time_long_9)
+
+#Include time differences between the recordings and the ones above. 
+df_9$time.diff.9 <-lag(lead(df_9$time_9, 1) - df_9$time_9)
 
 #Add speed values. 
 df_9$speed <- ninth[["features"]][["properties"]][["speed"]]
@@ -280,11 +298,12 @@ long_10 <- as.numeric(long_10)
 #Modify time vector
 time_10 <- tenth[["features"]][["properties"]][["time"]]
 time_10 <- as.POSIXct(strptime(time_10, tz = "MST", format = "%Y-%m-%dT%H:%M:%OS"))
+time_long_10<- tenth[['features']]$properties$time_long
 
 #Create tenth week's data frame.
-df_10 <- data.frame(lat_10, long_10, time_10)
-time.diff.10 <-lag(lead(df_10$time_10, 1) - df_10$time_10)
-df_10<- data.frame(lat_10, long_10, time_10, time.diff.10)
+df_10 <- data.frame(lat_10, long_10, time_10, time_long_10)
+
+df_10$time.diff.10 <-lag(lead(df_10$time_10, 1) - df_10$time_10)
 
 #Add speed values. 
 df_10$speed <- tenth[["features"]][["properties"]][["speed"]]
@@ -307,11 +326,13 @@ long_11 <- as.numeric(long_11)
 #Modify time vector
 time_11 <- eleven[["features"]][["properties"]][["time"]]
 time_11 <- as.POSIXct(strptime(time_11, tz = "MST", format = "%Y-%m-%dT%H:%M:%OS"))
+time_long_11 <- eleven[['features']]$properties$time_long
 
 #Create eleventh week's data frame.
-df_11 <- data.frame(lat_11, long_11, time_11)
-time.diff.11 <-lag(lead(df_11$time_11, 1) - df_11$time_11)
-df_11<- data.frame(lat_11, long_11, time_11, time.diff.11)
+df_11 <- data.frame(lat_11, long_11, time_11, time_long_11)
+
+#include time differences.
+df_11$time.diff.11 <-lag(lead(df_11$time_11, 1) - df_11$time_11)
 
 #Add speed values. 
 df_11$speed <- eleven[["features"]][["properties"]][["speed"]]
@@ -319,7 +340,7 @@ df_11$speed <- eleven[["features"]][["properties"]][["speed"]]
 #Combine all dfs in a list and change column names. 
 my.list <- list(df_1, df_2, df_3, df_4, df_5, df_6, df_7, df_8, df_9,df_10, df_11)
 my.list <- lapply(my.list, 
-                  function(x) {names(x) <- c("lat", "long", "Time", "time_difference", "speed")
+                  function(x) {names(x) <- c("lat", "long", "Time", "time_long", "time_difference", "speed")
                   return(x)})
 
 #Merge lists into one mega dataset. 
@@ -342,14 +363,14 @@ weather$Time <- as.POSIXct(lubridate::parse_date_time(weather$Date_Time,tz ="MST
 weather$Temp <- as.numeric(weather$Temp)
 
 #Convert the time formats of both data sets so that they match.
-weather$Time <- format(weather$Time,"%D-%H")
-weather$Time <- as.POSIXct(weather$Time)
-dfMerged$Time <- format(dfMerged$Time,"%D-%H")
-dfMerged$Time <- as.POSIXct(as.character(dfMerged$Time))
+#weather$Time <- format(weather$Time,"%D-%H")
+#weather$Time <- as.POSIXct(weather$Time)
+#dfMerged$Time <- format(dfMerged$Time,"%D-%H")
+#dfMerged$Time <- as.POSIXct(as.character(dfMerged$Time))
 
 #Merge them together by their timestamps.
-combined <- left_join(df_time,weather,by='Time') %>%
-  mutate(time = lubridate::parse_date_time(time,orders='mdyh'))
+combined <- left_join(dfMerged,weather,by='Time') %>%
+  mutate(Time = lubridate::parse_date_time(Time,orders='mdyhm'))
 
 #Create hex plot 
 #Shows us frequencies of the coordinates. 
@@ -371,7 +392,7 @@ first_plot
 #We can take a look at just week 2 to see what's going on. 
 my.list.2 <- list(df_6, df_7, df_8, df_9, df_10, df_11)
 my.list.2 <- lapply(my.list.2, 
-                    function(x) {names(x) <- c("lat.2", "long.2", "time_MST.2","time_difference.2", "speed")
+                    function(x) {names(x) <- c("lat.2", "long.2", "time_MST.2","time_long_2", "time_difference.2", "speed")
                     return(x)})
 
 #Merge second week's list into one dataset.  
@@ -381,6 +402,13 @@ dfMerged.2 <- do.call("rbind", my.list.2)
 dfMerged.2$coordinates.2 <- paste(dfMerged.2$lat.2, ",", dfMerged.2$long.2)
 tt.merged.2 <- table(dfMerged.2$coordinates.2)
 tt.merged.2[tt.merged.2==max(tt.merged.2)]
+
+dfMerged.2$Time <- format(dfMerged.2$time_MST.2,"%D-%H")
+dfMerged.2$Time <- as.POSIXct(as.character(dfMerged.2$time_MST.2))
+
+#Merge them together by their timestamps.
+combined.2 <- left_join(dfMerged.2,weather,by='Time') %>%
+  mutate(time = lubridate::parse_date_time(time,orders='mdyh'))
 
 #Plot second week's hexplot only.
 second_plot <- ggplot(dfMerged.2, mapping = aes(lat.2, long.2))+
@@ -397,7 +425,7 @@ second_plot <- ggplot(dfMerged.2, mapping = aes(lat.2, long.2))+
 second_plot
 #The brightest hexagons do not correspond to the most repeated coordinates. 
 
-#Removing the missing values find the median. 
+#Removing the missing values and finding the median. 
 second_per_rec =median(dfMerged$time_difference, na.rm=TRUE)
 #The median time difference is 8 seconds.There are periods of inactivity, 
 #where the subject is stationary. These indicate times that we can't bomb him.
@@ -409,9 +437,9 @@ inactive <-length(dfMerged[dfMerged$time_difference>120,])
 #In this dataset, he's inactive 6 times. 
 
 #Spatial Transformation
-spat_df <-SpatialPointsDataFrame(coords=dfMerged[,c("long", "lat")],
-                                 data=dfMerged['Time'],
-                                 proj4string=CRS("+proj=longlat +datum=WGS84 +units=m"))
+spat_df <-SpatialPointsDataFrame(coords=dfMerged[,c("lat", "long")],
+                                 data=dfMerged[,"time_long"],
+                                 proj4string=CRS("+proj=longlat +datum=WGS84"))
 # This step converts the longitude/latitude -> UTM
 utm_df <-spTransform(spat_df, CRSobj = "+proj=utm +zone=12 +datum=WGS84 +units=m") 
 utm_coords <-coordinates(utm_df)
@@ -432,13 +460,28 @@ dfMerged[4661,]$Time
 dfMerged[5353,]$Time
 dfMerged[5519,]$Time
 dfMerged[5529,]$Time
-#Aside from August 31st, he's stationary at the night when he's back home. 
+#Aside from August 31st, he's stationary at the night when he's back home.
 
 dfMerged[5353,]$Time
-#GPS data reveals he's at the University of Montana at that time. 
+#GPS data reveals that on August 31st he's at the University of Montana at that time. 
 #Removing these times when he's at the university because he can't be bombed when stationary. 
 dfMerged <- dfMerged[-c(5353:5529),]
 spat_df <- spat_df[-c(5353:5529),]
+
+
+#Spatially transform week 2 dataset. 
+spat_d.2 <-SpatialPointsDataFrame(coords=dfMerged.2[,c("long.2", "lat.2")],
+                                 data=dfMerged.2[,"time_MST.2"],
+                                 proj4string=CRS("+proj=longlat +datum=WGS84 +units=m"))
+# This step converts the longitude/latitude -> UTM
+utm_df.2 <-spTransform(spat_df.2, CRSobj = "+proj=utm +zone=12 +datum=WGS84 +units=m") 
+utm_coords.2 <-coordinates(utm_df.2)
+
+
+
+plot(coordinates(spat_df), col=factor(spat_df$Time))
+,
+     xlim = c(-114.02, -114.0), ylim=c(46.86,46.88))
 
 #Manually create inbound and outbound trips according to your coordinates.
 #0 = inbound (coming home from work), 1 = outbound (leaving home for work)
@@ -469,8 +512,8 @@ outbound <- spat_df[spat_df[!is.na(spat_df$session==0),]$session==0,]
 inbound <- spat_df[spat_df[!is.na(spat_df$session==1),]$session==1,]
 
 #Plot the inbound and outbound plots separately.
-plot(outbound$long,outbound$lat
-points(inbound$long,inbound$lat,col='red')
+plot(outbound$long,outbound$lat)
+points(inbound$long,inbound$lat, col = "red")
 
 #Fit DLM.
 gps_variance <- 20^2
@@ -493,12 +536,26 @@ dlm_filter_mod <-dlmFilter(utm_coords, dlm_spec)
 dlm_smooth_mod <-dlmSmooth(dlm_filter_mod)
 
 #Plot Kalman Filter, Smoother and Raw data into one plot to see how they're doing.
-#See the first 90 values for a clearer picture.(DAY1, WEEK1)
-plot(cbind(coordinates(spat_df)[1:90, ],
-           dlm_filter_mod$m[1:90, 1:2], 
-           dlm_smooth_mod$s[1:90, 1:2]),ype='p', col =c("black", "red", "blue"), xlab="UTM X", ylab="UTM Y")
+#See the first 100 values for a clearer picture.
+par(mfrow=c(1,1))
+plot(cbind(coordinates(spat_df)[1:200, ],
+           dlm_filter_mod$m[1:200, 1:2], 
+           dlm_smooth_mod$s[1:200, 1:2]),ype='p', col =c("black", "red", "blue"), xlab="UTM X", ylab="UTM Y"),
+     #,
     # xaxs="i",yaxs="i",xaxt="n",yaxt="n")
 legend("topright", col =c("black", "red", "blue"),pch = 1, 
        legend =c("raw", "kalman filter","kalman smoother"))
-#axis(1, xaxp=c(46.85,46.9,10))
-$axis(2, yaxp=c(-114.07,-113.98,10))
+axis(1, xaxp=c(46.85,46.9,10))
+axis(2, yaxp=c(-114.07,-113.98,10))
+
+#Compare to other models. 
+#Using GLM to predict latitude given longitude and time 
+glm_latitude <- glm(data=df, latitude~longitude+time)
+glm_predictions <- predict(glm_latitude)
+glm_residuals <- df$longitude - glm_predictions
+
+glm_long <- glm(data=df, longitude~latitude+time)
+plot(glm_residuals)
+
+#Try with including second order variables. 
+glm(data=df, latitude~longitude+time)
