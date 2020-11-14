@@ -494,14 +494,12 @@ dlm_filter_mod <-dlmFilter(utm_coords, dlm_spec)
 dlm_smooth_mod <-dlmSmooth(dlm_filter_mod)
 
 #Plot Kalman Filter, Smoother and Raw data into one plot to see how they're doing.
-#See the first 100 values for a clearer picture.
-par(mfrow=c(1,1))
-plot(cbind(coordinates(spat_df)[1:200, ],
-           dlm_filter_mod$m[1:200, 1:2], 
-           dlm_smooth_mod$s[1:200, 1:2]),ype='p', col =c("black", "red", "blue"), xlab="UTM X", ylab="UTM Y"),
-     #,
+#See the first 90 values for a clearer picture.(DAY1, WEEK1)
+plot(cbind(coordinates(spat_df)[1:90, ],
+           dlm_filter_mod$m[1:90, 1:2], 
+           dlm_smooth_mod$s[1:90, 1:2]),ype='p', col =c("black", "red", "blue"), xlab="UTM X", ylab="UTM Y")
     # xaxs="i",yaxs="i",xaxt="n",yaxt="n")
 legend("topright", col =c("black", "red", "blue"),pch = 1, 
        legend =c("raw", "kalman filter","kalman smoother"))
-axis(1, xaxp=c(46.85,46.9,10))
-axis(2, yaxp=c(-114.07,-113.98,10))
+#axis(1, xaxp=c(46.85,46.9,10))
+$axis(2, yaxp=c(-114.07,-113.98,10))
