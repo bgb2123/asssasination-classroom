@@ -1,0 +1,560 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Assasination Classroom
+**Name**: Begum Babur
+**UNI**: bgb2123
+
+Let's load our packages first. 
+*NOTE*: To install these packages in MacOS, you have to make sure GDAL and Gfortran are installed in your system. You can do this by `brew install gdal` and `brew install gfortran` via the Homebrew package manager.
+
+```{r}
+# install.packages("rgdal")
+# install.packages("fields")
+# install.packages("dlm")
+# install.packages("binhex")
+
+library(jsonlite)
+library(sp)
+library(rgdal)
+library(fields)
+library(lubridate)
+library(tidyverse)
+library(ggplot2)
+library(dlm)
+```
+
+Don't forget to set your working directory, wherever your files are.
+*NOTE*: Below line will only work for RStudio users; change the argument to `setwd()` if you are not using RStudio.
+```{r}
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+```
+
+Check whether you are in the current working directory.
+*NOTE*: Don't forget to put the provided `gps` and `test_gps` folders, as well as the `Weather.csv` into the same directory this notebook is in.
+```{r}
+list.files()
+```
+
+Let's create a function which will accepts a day's `.geojson` and return a data frame that consists of: i) latitude, ii) longtitude, iii) time, iv) time differences, and v) speed.
+```{r}
+create_df <- function(geojson_path) {
+  # Read in the .geojson file
+  stopifnot(endsWith(geojson_path, '.geojson'))
+  geojson = read_json(geojson_path, simplifyVector = T)
+  
+  # Get the coordinates from the geojson
+  coordinates <- geojson[["features"]][["geometry"]][["coordinates"]]
+  
+  # Split coordinates to latitude and longitude 
+  latitude <- sapply(strsplit(as.character(coordinates)," "), "[[", 2)
+  latitude <- gsub("\\)", "", latitude)
+  latitude <- as.numeric(latitude)
+  
+  longitude <- sapply(strsplit(as.character(coordinates)," "), "[[", 1)
+  longitude <- gsub("c\\(", "", longitude)
+  longitude <- gsub(",", "", longitude)
+  longitude <- as.numeric(longitude)
+  
+  # Modify time vector and adjust for timezone
+  time <- geojson[["features"]][["properties"]][["time"]]
+  time <- as.POSIXct(strptime(time, tz = "MST", format = "%Y-%m-%dT%H:%M:%OS"))
+  time_long <- geojson[['features']]$properties$time_long
+  
+  # Create data frame of coordinates and time values.
+  df <- data.frame(latitude, longitude, time, time_long)
+  # Include time differences between the recordings and the ones above. 
+  df$time.diff.1 <-lag(lead(df$time, 1) - df$time)
+  # Add speed values. 
+  df$speed <- geojson[["features"]][["properties"]][["speed"]]
+  
+  return(df)
+}
+```
+
+Let's run the above function on the corresponding GEOJSON data for the each of the 11 days.
+```{r}
+df1 <- create_df(geojson_path = "gps/20200818114606.geojson")
+df2 <- create_df(geojson_path = "gps/20200819132607.geojson")
+df3 <- create_df(geojson_path = "gps/20200820151044.geojson")
+df4 <- create_df(geojson_path = "gps/20200821111447.geojson")
+df5 <- create_df(geojson_path = "gps/20200824130857.geojson")
+df6 <- create_df(geojson_path = "gps/20200825121346.geojson")
+df7 <- create_df(geojson_path = "gps/20200826131614.geojson")
+df8 <- create_df(geojson_path = "gps/20200827113234.geojson")
+df9 <- create_df(geojson_path = "gps/20200828122627.geojson")
+df10 <- create_df(geojson_path = "gps/20200828130816.geojson")
+df11 <- create_df(geojson_path = "gps/20200831115147.geojson")
+```
+
+Let's put the data frames together into one mega dataset which we can later use to fit some models!
+```{r}
+# Combine all data frames in a list and change column names
+df_list <- list(df1, df2, df3, df4, df5, df6, df7, df8, df9,df10, df11)
+df_list <- lapply(df_list, 
+                  function(x) {
+                    names(x) <- c("latitude", "longitude", "Time", "time_long", "time_difference", "speed") 
+                    return(x)
+                  })
+
+# Merge lists into one mega dataset
+df <- do.call("rbind", df_list)
+
+# Add combined coordinates to merged sets
+df$coordinates <- paste(df$latitude, ",", df$longitude)
+
+# Used this to get the most frequent coordinate, taking latitude and longitude values of each recording as a whole.  
+# Creating a mode function for coordinates in some sense.
+all_coordinates <- table(df$coordinates)
+```
+
+Get the modes for the coordinates.
+```{r}
+all_coordinates[all_coordinates == max(all_coordinates)]
+```
+
+```{r}
+df
+```
+
+
+Let's get weather info into to add later to our dataset.
+```{r}
+weather <- read.csv("weather.csv", stringsAsFactors = FALSE, header = TRUE)
+weather <- weather[, 2:3]
+
+# Format weather date and time
+weather$Time <- as.POSIXct(lubridate::parse_date_time(weather$Date_Time, tz ="MST", orders='mdyhm'))
+weather$Temp <- as.numeric(weather$Temp)
+
+weather
+```
+
+Let's convert the time formats of both datasets so that they match and can be left-joined later.
+```{r}
+weather$Time <- format(weather$Time,"%D-%H")
+weather
+```
+
+```{r}
+df$Time <- format(df$Time,"%D-%H")
+df
+```
+
+Now, let's merge the two data frames (`df` and `weather`) by their timestamps.
+```{r}
+combined <- left_join(df, weather, by="Time")
+combined
+```
+
+Let's create a hex plot and show the frequencies of the coordinates (for both weeks).
+```{r}
+plot_all <- ggplot(df, mapping = aes(latitude, longitude)) +
+  geom_hex() +
+  geom_point(x=46.8600804, y=-113.9839519, color = "red") + # Points created according to mode values
+  geom_point(x=46.8616699, y=-113.9855465, color = "red") +
+  geom_point(x=46.8689186, y=-113.9893428, color = "red") +
+  geom_point(x=46.8701026, y=-113.9918634, color = "red") +
+  geom_point(x=46.8713271, y=-113.9952979, color = "red") +
+  geom_point(x=46.8734358, y=-113.9964836, color = "red") +
+  geom_point(x=46.8743452, y=-113.9940895, color = "red") +
+  geom_point(x=46.8821394, y=-113.998802, color = "red") +
+  geom_point(x=46.88427, y=-113.9968601, color = "red")
+
+# However, the modes of the repeated coordinates do not match the counts of the graph.
+plot_all
+```
+
+Let's now analyze the first week.
+```{r}
+# Collect the data frames that belong to the 2nd week only 
+df_first_week_list <- list(df1, df2, df3, df4, df5)
+df_first_week_list <- lapply(df_first_week_list, 
+                             function(x) {
+                               names(x) <- c("latitude", "longitude", "time_MST","time_long", "time_difference", "speed")
+                               return(x)
+                             })
+
+# Merge second week's list into one dataset  
+df_first_week <- do.call("rbind", df_first_week_list)
+
+# Add coordinate to merged data frame
+df_first_week$coordinates <- paste(df_first_week$latitude, ",", df_first_week$longitude)
+all_coordinates_first_week <- table(df_first_week$coordinates)
+```
+
+Get the modes for the coordinates of the 2nd week only.
+```{r}
+all_coordinates_first_week[all_coordinates_first_week == max(all_coordinates_first_week)]
+```
+
+Now let's modify the time according to the day-hour format, and merge weather data frame with the data frame for the first week, just like what we previously did.
+```{r}
+df_first_week$Time <- format(df_first_week$time_MST, "%D-%H")
+combined_first_week <- left_join(df_first_week, weather, by="Time")
+combined_first_week
+```
+
+Let's create a hex plot for the first week only and show the frequencies of the coordinates.
+*NOTE*: The brightest hexagons do not correspond to the most repeated coordinates. 
+```{r}
+plot_first_week <- ggplot(df_first_week, mapping = aes(latitude, longitude)) +
+  geom_hex() +
+  geom_point(x=46.8701026, y=-113.9918634, color = "red")
+
+plot_first_week
+```
+
+
+Let's now analyze the second week.
+```{r}
+# Collect the data frames that belong to the 2nd week only 
+df_second_week_list <- list(df6, df7, df8, df9, df10, df11)
+df_second_week_list <- lapply(df_second_week_list, 
+                              function(x) {
+                                names(x) <- c("latitude", "longitude", "time_MST","time_long", "time_difference", "speed")
+                                return(x)
+                              })
+
+# Merge second week's list into one dataset  
+df_second_week <- do.call("rbind", df_second_week_list)
+
+# Add coordinate to merged data frame
+df_second_week$coordinates <- paste(df_second_week$latitude, ",", df_second_week$longitude)
+all_coordinates_second_week <- table(df_second_week$coordinates)
+```
+
+Get the modes for the coordinates of the 2nd week only.
+```{r}
+all_coordinates_second_week[all_coordinates_second_week == max(all_coordinates_second_week)]
+```
+
+Now let's modify the time according to the day-hour format, and merge weather data frame with the data frame for the second week, just like what we previously did.
+```{r}
+df_second_week$Time <- format(df_second_week$time_MST, "%D-%H")
+combined_second_week <- left_join(df_second_week, weather, by="Time")
+combined_second_week
+```
+
+Let's create a hex plot for the second week only and show the frequencies of the coordinates.
+*NOTE*: The brightest hexagons do not correspond to the most repeated coordinates. 
+```{r}
+plot_second_week <- ggplot(df_second_week, mapping = aes(latitude, longitude)) +
+  geom_hex() +
+  geom_point(x=46.8600804, y=-113.9839519, color = "red") +
+  geom_point(x=46.8616699, y=-113.9855465, color = "red") +
+  geom_point(x=46.8689186, y=-113.9893428, color = "red") +
+  geom_point(x=46.8713271, y=-113.9926369, color = "red") + 
+  geom_point(x=46.8724778, y=-113.9952979, color = "red") +
+  geom_point(x=46.8734358, y=-113.9964836, color = "red") +
+  geom_point(x=46.8743452, y=-113.9940895, color = "red") +
+  geom_point(x=46.8821394, y=-113.998802, color = "red") +
+  geom_point(x=46.88427, y=-113.9968601, color = "red")
+
+plot_second_week
+```
+
+Let's now go back to the data frame that contains both weeks, `df`.
+Remove the missing values and finding the median. 
+```{r}
+second_per_rec = median(df$time_difference, na.rm=TRUE)
+second_per_rec
+```
+
+The median time difference is 8 seconds. There are periods of inactivity, where the subject is stationary. 
+These indicate times that we can't bomb him.
+
+```{r}
+print(paste("Number of seconds per record:", second_per_rec))
+print(paste("Number of records per second:", 1 / as.numeric(second_per_rec)))
+```
+
+When the target is stationary for over 2 minutes, he's considered safe. 
+We will record this as the number of sessions of inactivity.
+```{r}
+inactive <- length(df[df$time_difference > 120,])
+inactive
+```
+In this dataset, he's inactive 7 times. 
+
+
+Let's apply the spatial transformation.
+```{r}
+spat_df <- SpatialPointsDataFrame(coords = df[, c("longitude", "latitude")],
+                                  data = df[, c("longitude", "latitude", "Time")],
+                                  proj4string = CRS("+proj=longlat +datum=WGS84"))
+spat_df
+```
+
+Let's convert the longitude/latitude to UTM.
+```{r}
+utm_df <- spTransform(spat_df, CRSobj = "+proj=utm +zone=12 +datum=WGS84 +units=m") 
+utm_coords <-coordinates(utm_df)
+utm_df
+utm_coords
+```
+
+Let's find the dates when he is stationary for more than 2 minutes.  
+```{r}
+which(df$time_difference > 120)
+```
+
+```{r}
+for (i in which(df$time_difference > 120)) {
+  print(df[i,]$Time)
+}
+```
+
+Aside from August 31st and 26th, he's stationary at the night when he's back home. Let's drop these two dates.
+
+```{r}
+df[5353,]$Time
+df[5529,]$Time
+```
+
+GPS data reveals that on August 31st he's at the University of Montana at that time. 
+Removing these times when he's at the university because he can't be bombed when stationary. 
+
+```{r}
+nrow(df)
+df <- df[!(grepl('08/31/20', df$Time, fixed=TRUE) | grepl('08/26/20', df$Time, fixed=TRUE)),]
+nrow(df)
+
+nrow(spat_df)
+spat_df <- spat_df[!(grepl('08/31/20', spat_df$Time, fixed=TRUE) | grepl('08/26/20', spat_df$Time, fixed=TRUE)),]
+nrow(spat_df)
+```
+
+
+Now let's also spatially transform the week 2 dataset.
+```{r}
+spat_df_second_week <-SpatialPointsDataFrame(coords = df_second_week[,c("longitude", "latitude")],
+                                             data = df_second_week[,c("longitude", "latitude", "Time")],
+                                             proj4string=CRS("+proj=longlat +datum=WGS84 +units=m"))
+spat_df_second_week
+```
+
+Let's converts the longitude/latitude to UTM
+```{r}
+utm_df_second_week <-spTransform(spat_df_second_week, CRSobj = "+proj=utm +zone=12 +datum=WGS84 +units=m") 
+utm_coords_second_week <-coordinates(utm_df_second_week)
+utm_df_second_week
+utm_coords_second_week
+```
+
+
+```{r}
+plot(coordinates(spat_df), col=factor(spat_df$Time))
+```
+
+Let's manually create inbound and outbound trips according to your coordinates.
+0 = inbound (coming home from work), 1 = outbound (leaving home for work)
+```{r}
+spat_df$session <- rep(NA,nrow(spat_df@data))
+spat_df$session[1:80] <- 0
+spat_df$session[81:90] <- 1
+spat_df$session[91:213] <- 0
+spat_df$session[214:339] <- 1
+spat_df$session[340:564] <- 0
+spat_df$session[565:693] <- 1
+spat_df$session[694:1021] <- 0
+spat_df$session[1022:1360] <- 1
+spat_df$session[1361:1722] <- 0
+spat_df$session[1723:2044] <- 1
+spat_df$session[2045:2403] <- 0
+spat_df$session[2404:2755] <- 1
+spat_df$session[2756:3117] <- 0
+spat_df$session[3118:3533] <- 1
+spat_df$session[3534:3896] <- 0
+spat_df$session[3897:4245] <- 1
+# spat_df$session[4246:4512] <- 0
+# spat_df$session[4513:4573] <- 1
+# spat_df$session[4574:4903] <- 0
+# spat_df$session[4904:5264] <- 1
+# spat_df$session[5265:5352] <- 0
+```
+
+```{r}
+outbound <- spat_df[spat_df[!is.na(spat_df$session==0),]$session==0,]
+inbound <- spat_df[spat_df[!is.na(spat_df$session==1),]$session==1,]
+outbound
+inbound
+```
+
+Let's plot the inbound and outbound plots separately.
+```{r}
+plot(outbound$longitude, outbound$latitude)
+points(inbound$longitude, inbound$latitude, col = "red")
+```
+
+
+# Let's fit DLM
+```{r}
+gps_variance <- 20^2
+v_mat <-diag(c(gps_variance, gps_variance))
+f_mat <-matrix(c(1,0,0,0, 0,1,0,0), nrow=2, byrow = TRUE)
+dt <- 8
+g_mat <-matrix(c(1, 0, dt, 0,
+                 0, 1, 0, dt,
+                 0, 0, 1, 0,
+                 0, 0, 0, 1), byrow=TRUE, ncol=4)
+avg_walk_speed_m_per_sec <- median(df$speed, na.rm=TRUE)
+dlm_spec <-dlm(FF= f_mat,
+               GG= g_mat,
+               V = v_mat,
+               W =diag(c(5, 5, 1, 1)^2),
+               m0 =matrix(c(utm_coords[1, ],rep(avg_walk_speed_m_per_sec/8, 2)),ncol=1),
+               # A vector by R defaults is a k by 1 matrix.
+               C0 =diag(rep(10^2, 4)))
+
+dlm_filter_mod <- dlmFilter(utm_coords, dlm_spec)
+dlm_smooth_mod <- dlmSmooth(dlm_filter_mod)
+
+# Plot Kalman Filter, Smoother and Raw data into one plot to see how they're doing.
+# See the first 100 values for a clearer picture.
+par(mfrow=c(1,1))
+plot(cbind(coordinates(spat_df)[1:200, ],
+           dlm_filter_mod$m[1:200, 1:2], 
+           dlm_smooth_mod$s[1:200, 1:2]),ype='p', col =c("black", "red", "blue"), xlab="UTM X", ylab="UTM Y")
+legend("topright", col = c("black", "red", "blue"), pch = 1,legend = c("raw", "kalman filter", "kalman smoother"))
+axis(1, xaxp=c(46.85,46.9,10))
+axis(2, yaxp=c(-114.07,-113.98,10))
+```
+
+Now let's compare to other models. 
+Using GLM, let's predict latitude given longitude and time.
+
+Let's first look at the unique dates to make a decision on how we should form train and test splits.
+```{r}
+unique(df_first_week$Time)
+unique(df_second_week$Time)
+```
+
+### (1) Train on Week 1 and Test on Week 2's First Day
+
+#### Latitude 
+```{r}
+glm_latitude <- glm(data=df_first_week, latitude~longitude+time_long+speed+time_difference)
+glm_predictions <- predict(glm_latitude, newdata=df_second_week[grepl('08/25/20', df_second_week$Time, fixed=TRUE),])
+glm_residuals <- df_second_week[grepl('08/25/20', df_second_week$Time, fixed=TRUE),]$latitude - glm_predictions
+plot(glm_residuals)
+```
+
+#### Longitude
+```{r}
+glm_longitude <- glm(data=df_first_week, longitude~latitude+time_long+speed+time_difference)
+glm_predictions <- predict(glm_longitude, newdata=df_second_week[grepl('08/25/20', df_second_week$Time, fixed=TRUE),])
+glm_residuals <- df_second_week[grepl('08/25/20', df_second_week$Time, fixed=TRUE),]$longitude - glm_predictions
+plot(glm_residuals)
+```
+
+#### Time
+```{r}
+glm_time_long <- glm(data=df_first_week, time_long~longitude+latitude+speed+time_difference)
+glm_predictions <- predict(glm_time_long, newdata=df_second_week[grepl('08/25/20', df_second_week$Time, fixed=TRUE),])
+glm_residuals <- df_second_week[grepl('08/25/20', df_second_week$Time, fixed=TRUE),]$time_long - glm_predictions
+plot(glm_residuals)
+```
+
+### (1) Train on Week 2 First 5 Days and Test on Week 2's Last (6th) Day
+#### Latitude 
+```{r}
+glm_latitude <- glm(data=df_second_week[!grepl('08/31/20', df_second_week$Time, fixed=TRUE),], latitude~longitude+time_long+speed+time_difference)
+glm_predictions <- predict(glm_latitude, newdata=df_second_week[grepl('08/31/20', df_second_week$Time, fixed=TRUE),])
+glm_residuals <- df_second_week[grepl('08/31/20', df_second_week$Time, fixed=TRUE),]$latitude - glm_predictions
+plot(glm_residuals)
+```
+
+#### Longitude
+```{r}
+glm_longitude <- glm(data=df_second_week[!grepl('08/31/20', df_second_week$Time, fixed=TRUE),], longitude~latitude+time_long+speed+time_difference)
+glm_predictions <- predict(glm_longitude, newdata=df_second_week[grepl('08/31/20', df_second_week$Time, fixed=TRUE),])
+glm_residuals <- df_second_week[grepl('08/31/20', df_second_week$Time, fixed=TRUE),]$longitude - glm_predictions
+plot(glm_residuals)
+```
+
+#### Time
+```{r}
+glm_time_long <- glm(data=df_second_week[!grepl('08/31/20', df_second_week$Time, fixed=TRUE),], time_long~longitude+latitude+speed+time_difference)
+glm_predictions <- predict(glm_time_long, newdata=df_second_week[grepl('08/31/20', df_second_week$Time, fixed=TRUE),])
+glm_residuals <- df_second_week[grepl('08/31/20', df_second_week$Time, fixed=TRUE),]$time_long - glm_predictions
+plot(glm_residuals)
+```
+
+
+Now let's code up our final algorithm with a single function! We will train/fit our models on the second week. `k` argument indicates the number
+of bombs you want to predict, based on the absolute sum error of residuals.
+```{r}
+assasination_algorithm <- function(test_df, k=2) {
+  # Latitude prediction
+  glm_latitude <- glm(data=df_second_week, latitude~longitude+time_long+speed+time_difference)
+  glm_latitude_predictions <- predict(glm_latitude, newdata=test_df)
+  glm_latitude_residuals <- test_df$latitude - glm_latitude_predictions
+  
+  # Longitude prediction
+  glm_longitude <- glm(data=df_second_week, longitude~latitude+time_long+speed+time_difference)
+  glm_longitude_predictions <- predict(glm_longitude, newdata=test_df)
+  glm_longitude_residuals <- test_df$longitude - glm_longitude_predictions
+  
+  # Time prediction
+  glm_time_long <- glm(data=df_second_week, time_long~latitude+longitude+speed+time_difference)
+  glm_time_long_predictions <- predict(glm_time_long, newdata=test_df)
+  glm_time_long_residuals <- test_df$time_long - glm_time_long_predictions
+  
+  # Measure errors (based on latitude and longitude only)
+  errors <- bind_cols(latitude=as.vector(glm_latitude_residuals), longitude=as.vector(glm_longitude_residuals))
+  absolute_sum_errors <- abs(errors$latitude) + abs(errors$longitude)
+  
+  # Get bomb predictions (latitude, longitude, and time) based on top-k minimum errors
+  for (i in 1:k) {
+    print(paste('Bomb Prediction ', i))
+    print(paste('Latitude: ', glm_latitude_predictions[which(absolute_sum_errors == sort(absolute_sum_errors)[i])]))
+    print(paste('Longitude: ', glm_longitude_predictions[which(absolute_sum_errors == sort(absolute_sum_errors)[i])]))
+    print(paste('Time: ', glm_time_long_predictions[which(absolute_sum_errors == sort(absolute_sum_errors)[i])]))
+    print('-----------------------------------------------------------------------------------------------------------')
+  }
+}
+```
+
+Now let's read in the test data and format it accordingly, i.e. in the same way we have handled the training data.
+```{r}
+test_df1 <- create_df(geojson_path = "test_gps/20200901112100.geojson")
+test_df2 <- create_df(geojson_path = "test_gps/20200902125611.geojson")
+test_df3 <- create_df(geojson_path = "test_gps/20200903110618.geojson")
+test_df4 <- create_df(geojson_path = "test_gps/20200908081420.geojson")
+test_df5 <- create_df(geojson_path = "test_gps/20200910070926.geojson")
+test_df6 <- create_df(geojson_path = "test_gps/20200914101156.geojson")
+
+test_df_list <- list(test_df1, test_df2, test_df3, test_df4, test_df5, test_df6)
+test_df_list <- lapply(test_df_list, 
+                       function(x) {
+                         names(x) <- c("latitude", "longitude", "Time", "time_long", "time_difference", "speed") 
+                         return(x) 
+                       })
+
+# Merge lists into one mega dataset
+test_df <- do.call("rbind", test_df_list)
+
+# Add combined coordinates to merged sets
+test_df$coordinates <- paste(test_df$latitude, ",", test_df$longitude)
+
+# Used this to get the most frequent coordinate, taking latitude and longitude values of each recording as a whole.  
+# Creating a mode function for coordinates in some sense.
+all_coordinates <- table(test_df$coordinates)
+
+test_df$Time <- format(test_df$Time, "%D-%H")
+
+spat_test_df <- SpatialPointsDataFrame(coords = test_df[, c("longitude", "latitude")],
+                                       data = test_df[, c("longitude", "latitude", "Time")],
+                                       proj4string = CRS("+proj=longlat +datum=WGS84"))
+
+test_df <- test_df[, c("latitude", "longitude", "time_long", "time_difference", "speed")]
+test_df
+```
+
+Now, let's use our function to get our predictions.
+```{r}
+assasination_algorithm(test_df)
+```
